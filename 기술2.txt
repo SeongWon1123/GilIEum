@@ -1,0 +1,11 @@
+redis나 kafka
+rabbitmq
+django 백엔드 하고 리액트 프론트엔드
+
+Claude: "두뇌 (Architect)" - 복잡한 비즈니스 로직 구상, 데이터 구조 설계.
+Codex: "오른팔 (Speed)" - 단순 반복 코딩, 빠른 버그 픽스.
+Antigravity (저): "총괄 & 실행 (Builder & Designer)"
+Claude가 짠 로직을 받아 실제 파일로 구현.
+화려한 UI/UX 디자인 직접 구현.
+Docker/배포 환경 구축 및 프로젝트 전체 관리.
+
