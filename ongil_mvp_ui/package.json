@@ -1,0 +1,27 @@
+{
+  "name": "ongil-mvp-ui",
+  "version": "1.0.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "sync:spots": "node ./scripts/sync-spots.mjs",
+    "build:popularity": "python ..\\ongil_mvp\\build_popularity.py",
+    "sync:all": "npm run build:popularity && npm run sync:spots",
+    "web:sync": "npm run sync:spots && expo start --web --port 8083 --clear",
+    "web:all": "npm run sync:all && expo start --web --port 8083 --clear",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "^4.0.1",
+    "expo": "~52.0.30",
+    "expo-asset": "^12.0.12",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-dom": "^18.3.1",
+    "react-native": "0.76.6",
+    "react-native-web": "^0.19.13"
+  }
+}
