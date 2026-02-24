@@ -13,6 +13,7 @@ import {
   Dimensions,
   Pressable,
 } from "react-native";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
@@ -72,7 +73,7 @@ function OptionRow({ title, value, onChange, options }) {
                 styles.chip,
                 isActive && styles.chipActive,
                 pressed && { opacity: 0.8 },
-                pressed && !isActive && { backgroundColor: "#f1f5f9" }
+                pressed && !isActive && { backgroundColor: PRIMARY_LIGHT }
               ]}
               onPress={() => {
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -158,9 +159,11 @@ function distanceKm(lat1, lng1, lat2, lng2) {
   return earthRadiusKm * c;
 }
 
-const PRIMARY_COLOR = "#4f46e5"; // Indigo-600
-const PRIMARY_LIGHT = "#e0e7ff"; // Indigo-100
-const BACKGROUND_COLOR = "#f8fafc"; // Slate-50
+const PRIMARY_COLOR = "#059669"; // emerald-600
+const PRIMARY_LIGHT = "#ecfdf5"; // emerald-50
+const SECONDARY_COLOR = "#0d9488"; // teal-600
+const SECONDARY_LIGHT = "#f0fdfa"; // teal-50
+const BACKGROUND_COLOR = "#f8fafc"; // slate-50
 
 function KakaoMapSection({ stops }) {
   const mapRef = useRef(null);
@@ -169,6 +172,7 @@ function KakaoMapSection({ stops }) {
   const [scriptSrc, setScriptSrc] = useState("");
 
   const key = process.env.EXPO_PUBLIC_KAKAO_JS_KEY || "";
+  const restKey = process.env.EXPO_PUBLIC_KAKAO_REST_KEY || "";
   const host = Platform.OS === "web" && typeof window !== "undefined" ? window.location.host : "n/a";
 
   useEffect(() => {
@@ -209,10 +213,12 @@ function KakaoMapSection({ stops }) {
           }, 100);
 
           const bounds = new window.kakao.maps.LatLngBounds();
+          const linePath = [];
 
           resolvedStops.forEach((stop) => {
             const latLng = new window.kakao.maps.LatLng(stop.lat, stop.lng);
             bounds.extend(latLng);
+            linePath.push(latLng);
 
             const marker = new window.kakao.maps.Marker({
               map,
@@ -228,6 +234,79 @@ function KakaoMapSection({ stops }) {
               infowindow.open(map, marker);
             });
           });
+
+          // Fetch actual driving route from Kakao Mobility Directions API
+          const getDirectionsPath = async (stopsList) => {
+            if (stopsList.length < 2) return;
+            if (!restKey) {
+              console.warn("EXPO_PUBLIC_KAKAO_REST_KEY is missing. Falling back to straight line.");
+              drawStraightPolyline();
+              return;
+            }
+
+            const origin = `${stopsList[0].lng},${stopsList[0].lat}`;
+            const dest = `${stopsList[stopsList.length - 1].lng},${stopsList[stopsList.length - 1].lat}`;
+
+            let waypoints = "";
+            if (stopsList.length > 2) {
+              const wp = stopsList.slice(1, stopsList.length - 1).map(s => `${s.lng},${s.lat}`);
+              waypoints = `&waypoints=${wp.join('|')}`;
+            }
+
+            const url = `https://apis-navi.kakaomobility.com/v1/directions?origin=${origin}&destination=${dest}${waypoints}`;
+
+            try {
+              const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                  Authorization: `KakaoAK ${restKey}`
+                }
+              });
+
+              const data = await response.json();
+              if (data.routes && data.routes[0]) {
+                const pathCoords = [];
+                data.routes[0].sections.forEach(section => {
+                  section.roads.forEach(road => {
+                    for (let i = 0; i < road.vertexes.length; i += 2) {
+                      const lng = road.vertexes[i];
+                      const lat = road.vertexes[i + 1];
+                      pathCoords.push(new window.kakao.maps.LatLng(lat, lng));
+                    }
+                  });
+                });
+
+                const polyline = new window.kakao.maps.Polyline({
+                  path: pathCoords,
+                  strokeWeight: 5,
+                  strokeColor: PRIMARY_COLOR,
+                  strokeOpacity: 0.8,
+                  strokeStyle: 'solid'
+                });
+                polyline.setMap(map);
+              } else {
+                console.warn('Routing failed, falling back to straight polyline');
+                drawStraightPolyline();
+              }
+            } catch (err) {
+              console.error('Error fetching directions:', err);
+              drawStraightPolyline();
+            }
+          };
+
+          const drawStraightPolyline = () => {
+            const polyline = new window.kakao.maps.Polyline({
+              path: linePath,
+              strokeWeight: 4,
+              strokeColor: PRIMARY_COLOR,
+              strokeOpacity: 0.8,
+              strokeStyle: 'solid'
+            });
+            polyline.setMap(map);
+          };
+
+          // Trigger driving route draw
+          getDirectionsPath(resolvedStops);
 
           map.setBounds(bounds);
           setMapStatus("ready");
@@ -299,6 +378,7 @@ function KakaoMapSection({ stops }) {
 }
 
 export default function App() {
+  const [screen, setScreen] = useState('home'); // 'home', 'input', 'result'
   const [companionCount, setCompanionCount] = useState("3");
   const [companions, setCompanions] = useState([
     { id: 0, age: "20s", gender: "female", label: "본인" },
@@ -308,7 +388,6 @@ export default function App() {
   const [companionType, setCompanionType] = useState("friends");
   const [transport, setTransport] = useState("public");
   const [placeCount, setPlaceCount] = useState("3");
-  const [submitted, setSubmitted] = useState(false);
 
   // Sync companion array size with companionCount input
   useEffect(() => {
@@ -339,189 +418,246 @@ export default function App() {
 
   const result = useMemo(
     () => recommendCourse({ companionType, placeCount: parsedPlaceCount, transport }),
-    [companionType, parsedPlaceCount, transport]
+    [companionType, parsedPlaceCount, transport, screen]
   );
 
   const handleRecommend = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
-    setSubmitted(true);
+    setScreen('result');
   };
 
   const handleReset = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSubmitted(false);
+    setScreen('input');
   };
+
+  const renderHome = () => (
+    <View style={styles.homeContainer}>
+      <View style={styles.bgDecorR1} />
+      <View style={styles.bgDecorR2} />
+      <View style={styles.bgDecorR3} />
+
+      <View style={styles.homeCenter}>
+        <View style={styles.logoRow}>
+          <View style={styles.logoWrapper}>
+            <FontAwesome5 name="mountain" size={72} color={PRIMARY_COLOR} />
+            <Feather name="compass" size={36} color={SECONDARY_COLOR} style={styles.absoluteCompass} />
+          </View>
+        </View>
+
+        <Text style={styles.homeTitle}>온길</Text>
+
+        <View style={styles.homeSubtitleRow}>
+          <Feather name="map" size={20} color={SECONDARY_COLOR} />
+          <Text style={styles.homeSubtitleText}>순천의 모든 여행</Text>
+        </View>
+
+        <Text style={styles.homeDesc}>
+          자연과 역사가 살아 숨쉬는 순천{"\n"}당신만을 위한 특별한 여행 코스를 만들어드립니다
+        </Text>
+
+        <View style={styles.homeFooterRow}>
+          <Feather name="navigation" size={14} color={PRIMARY_COLOR} />
+          <Text style={styles.homeFooterText}>맞춤형 여행 계획 | 실시간 위치 | 순천 전문</Text>
+        </View>
+      </View>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.actionButton,
+          pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+          { alignSelf: 'center', width: 240, marginTop: 40 }
+        ]}
+        onPress={() => setScreen('input')}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={styles.actionButtonText}>여행 시작하기</Text>
+          <Feather name="chevron-right" size={22} color="#ffffff" style={{ marginLeft: 8 }} />
+        </View>
+      </Pressable>
+    </View>
+  );
+
+  const renderInput = () => (
+    <ScrollView contentContainerStyle={styles.content}>
+      <Pressable style={styles.backButton} onPress={() => setScreen('home')}>
+        <Feather name="arrow-left" size={20} color={PRIMARY_COLOR} />
+        <Text style={styles.backButtonText}>홈으로</Text>
+      </Pressable>
+
+      <View style={styles.inputHeader}>
+        <Text style={styles.heroTextHighlight}>온길 in 순천</Text>
+        <Text style={styles.inputSub}>몇 가지만 알려주시면 완벽한 코스를 만들어드려요</Text>
+      </View>
+
+      <View style={styles.cardBlock}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconBoxPrimary}>
+            <Feather name="calendar" size={16} color={PRIMARY_COLOR} />
+          </View>
+          <Text style={styles.cardHeaderText}>장소 개수 (1~5)</Text>
+        </View>
+
+        <View style={styles.counterRow}>
+          <Pressable
+            style={styles.counterBtn}
+            onPress={() => setPlaceCount(String(Math.max(1, parseInt(placeCount) - 1)))}
+          >
+            <Text style={styles.counterBtnText}>−</Text>
+          </Pressable>
+          <View style={styles.counterValueBox}>
+            <Text style={styles.counterValueNum}>{placeCount}</Text>
+            <Text style={styles.counterValueUnit}>곳</Text>
+          </View>
+          <Pressable
+            style={styles.counterBtn}
+            onPress={() => setPlaceCount(String(Math.min(5, parseInt(placeCount) + 1)))}
+          >
+            <Text style={styles.counterBtnText}>+</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.helpTextCenter}>루트에 포함할 주요 장소 개수를 선택하세요</Text>
+      </View>
+
+      <View style={[styles.cardBlock, { borderColor: SECONDARY_LIGHT, borderWidth: 1 }]}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconBoxSecondary}>
+            <Feather name="users" size={16} color={SECONDARY_COLOR} />
+          </View>
+          <Text style={styles.cardHeaderText}>동반인 정보 ({companionCount}명)</Text>
+        </View>
+
+        <View style={styles.counterRowSmall}>
+          <Text style={styles.label}>총 인원수: </Text>
+          <TextInput
+            value={companionCount}
+            onChangeText={(text) => setCompanionCount(text.replace(/[^0-9]/g, ''))}
+            keyboardType="numeric"
+            style={styles.inputSmall}
+          />
+        </View>
+
+        <View style={styles.companionList}>
+          {companions.map((comp, index) => (
+            <View key={comp.id} style={styles.companionItemCard}>
+              <Text style={styles.companionItemLabel}>{comp.label}</Text>
+              <OptionRow
+                title="연령대"
+                value={comp.age}
+                onChange={(val) => updateCompanion(index, "age", val)}
+                options={ageOptions}
+              />
+              <OptionRow
+                title="성별"
+                value={comp.gender}
+                onChange={(val) => updateCompanion(index, "gender", val)}
+                options={genderOptions}
+              />
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <OptionRow
+        title="동행 유형"
+        value={companionType}
+        onChange={setCompanionType}
+        options={companionOptions}
+      />
+      <OptionRow
+        title="이동수단"
+        value={transport}
+        onChange={setTransport}
+        options={transportOptions}
+      />
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.actionButton,
+          pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+        ]}
+        onPress={handleRecommend}
+      >
+        <Text style={styles.actionButtonText}>여행 코스 만들기 →</Text>
+      </Pressable>
+    </ScrollView>
+  );
+
+  const renderResult = () => (
+    <ScrollView contentContainerStyle={styles.content}>
+      <Pressable style={styles.backButton} onPress={() => setScreen('input')}>
+        <Feather name="arrow-left" size={20} color={PRIMARY_COLOR} />
+        <Text style={styles.backButtonText}>코스 재설정</Text>
+      </Pressable>
+
+      <View style={styles.resultHeader}>
+        <View style={styles.resultSummaryContainer}>
+          <Text style={styles.resultSummary}>{result.summary}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <View style={styles.metaChip}>
+            <Feather name="navigation" size={16} color={PRIMARY_COLOR} style={{ marginRight: 6 }} />
+            <Text style={styles.metaChipText}>{result.totalDistance}km</Text>
+          </View>
+          <View style={styles.metaChip}>
+            <Feather name="clock" size={16} color={SECONDARY_COLOR} style={{ marginRight: 6 }} />
+            <Text style={styles.metaChipText}>{Math.floor(result.totalMin / 60)}시간 {result.totalMin % 60}분</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.timeline}>
+        {result.stops.map((stop, index) => {
+          return (
+            <View key={`${stop.order}-${stop.name}`} style={styles.timelineItem}>
+              <View style={styles.timelineNode}>
+                <Text style={styles.timelineOrderText}>{stop.order}</Text>
+              </View>
+
+              <View style={styles.timelineContent}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>{stop.name}</Text>
+                  <View style={styles.timeBadgeInfo}>
+                    <Text style={styles.timeBadgeInfoText}>{stop.arrive} 도착</Text>
+                  </View>
+                </View>
+
+                <View style={styles.cardDetailsRow}>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>이동</Text>
+                    <Text style={styles.detailValue}>{stop.dist}km</Text>
+                  </View>
+                  <View style={styles.detailDivider} />
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>체류</Text>
+                    <Text style={styles.detailValue}>{stop.stay}분</Text>
+                  </View>
+                </View>
+
+                <View style={styles.cardTags}>
+                  {stop.tags.map(tag => (
+                    <View key={tag} style={styles.miniTag}>
+                      <Text style={styles.miniTagText}>#{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      <KakaoMapSection stops={result.stops} />
+    </ScrollView>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Text style={styles.headerAppTitle}>길이음</Text>
-          <View style={styles.betaBadge}>
-            <Text style={styles.betaBadgeText}>BETA</Text>
-          </View>
-        </View>
-        <Text style={styles.headerSubtitle}>단 하나뿐인 AI 맞춤 여행 코스</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {!submitted ? (
-          <View style={styles.formContainer}>
-            <View style={styles.heroSection}>
-              <Text style={styles.heroText}>당신에게 완벽한</Text>
-              <Text style={styles.heroTextHighlight}>순천 여행을 이어드립니다.</Text>
-            </View>
-
-            <View style={styles.columns}>
-              <View style={[styles.block, styles.columnBlock]}>
-                <Text style={styles.label}>동행 인원</Text>
-                <TextInput
-                  value={companionCount}
-                  onChangeText={(text) => {
-                    // Prevent deleting entirely to avoid NaN crashing immediately
-                    const safeText = text.replace(/[^0-9]/g, '');
-                    setCompanionCount(safeText);
-                  }}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholder="예: 3"
-                  placeholderTextColor="#9ca3af"
-                />
-              </View>
-
-              <View style={[styles.block, styles.columnBlock]}>
-                <Text style={styles.label}>장소 개수 (1~5)</Text>
-                <TextInput
-                  value={placeCount}
-                  onChangeText={(text) => setPlaceCount(text.replace(/[^0-9]/g, ''))}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholder="예: 3"
-                  placeholderTextColor="#9ca3af"
-                />
-              </View>
-            </View>
-
-            <View style={styles.companionList}>
-              {companions.map((comp, index) => (
-                <View key={comp.id} style={{ marginBottom: 16 }}>
-                  <Text style={[styles.label, { paddingLeft: 8 }]}>{comp.label}</Text>
-                  <OptionRow
-                    title="연령대"
-                    value={comp.age}
-                    onChange={(val) => updateCompanion(index, "age", val)}
-                    options={ageOptions}
-                  />
-                  <OptionRow
-                    title="성별"
-                    value={comp.gender}
-                    onChange={(val) => updateCompanion(index, "gender", val)}
-                    options={genderOptions}
-                  />
-                </View>
-              ))}
-            </View>
-            <OptionRow
-              title="동행 유형"
-              value={companionType}
-              onChange={setCompanionType}
-              options={companionOptions}
-            />
-            <OptionRow
-              title="이동수단"
-              value={transport}
-              onChange={setTransport}
-              options={transportOptions}
-            />
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.actionButton,
-                pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-              ]}
-              onPress={handleRecommend}
-            >
-              <Text style={styles.actionButtonText}>맞춤 코스 추천받기</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.resultContainer}>
-            <View style={styles.resultHeader}>
-              <View style={styles.resultSummaryContainer}>
-                <Text style={styles.resultSummary}>{result.summary}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <View style={styles.metaChip}>
-                  <Text style={styles.metaChipIcon}>🚗</Text>
-                  <Text style={styles.metaChipText}>{result.totalDistance}km</Text>
-                </View>
-                <View style={styles.metaChip}>
-                  <Text style={styles.metaChipIcon}>⏱️</Text>
-                  <Text style={styles.metaChipText}>{Math.floor(result.totalMin / 60)}시간 {result.totalMin % 60}분</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.timeline}>
-              {result.stops.map((stop, index) => {
-                const isLast = index === result.stops.length - 1;
-                return (
-                  <View key={`${stop.order}-${stop.name}`} style={styles.timelineItem}>
-
-                    <View style={styles.timelineNode}>
-                      <Text style={styles.timelineOrderText}>{stop.order}</Text>
-                    </View>
-
-                    <View style={styles.timelineContent}>
-                      <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>{stop.name}</Text>
-                        <View style={styles.timeBadgeInfo}>
-                          <Text style={styles.timeBadgeInfoText}>{stop.arrive} 도착</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.cardDetailsRow}>
-                        <View style={styles.detailItem}>
-                          <Text style={styles.detailLabel}>이동</Text>
-                          <Text style={styles.detailValue}>{stop.dist}km</Text>
-                        </View>
-                        <View style={styles.detailDivider} />
-                        <View style={styles.detailItem}>
-                          <Text style={styles.detailLabel}>체류</Text>
-                          <Text style={styles.detailValue}>{stop.stay}분</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.cardTags}>
-                        {stop.tags.map(tag => (
-                          <View key={tag} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>#{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            <KakaoMapSection stops={result.stops} />
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && { backgroundColor: "#f1f5f9" }
-              ]}
-              onPress={handleReset}
-            >
-              <Text style={styles.secondaryButtonText}>조건 변경하기</Text>
-            </Pressable>
-          </View>
-        )
-        }
-      </ScrollView >
-    </SafeAreaView >
+      {screen === 'home' && renderHome()}
+      {screen === 'input' && renderInput()}
+      {screen === 'result' && renderResult()}
+    </SafeAreaView>
   );
 }
 
@@ -530,100 +666,293 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BACKGROUND_COLOR,
   },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === "android" ? 50 : 20,
-    paddingBottom: 20,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.04)",
-  },
-  headerTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerAppTitle: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#1e1b4b", // Deep Indigo
-    letterSpacing: -0.7,
-  },
-  betaBadge: {
-    marginLeft: 8,
-    backgroundColor: PRIMARY_LIGHT,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  betaBadgeText: {
-    color: PRIMARY_COLOR,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#64748b",
-    fontWeight: "600",
-    marginTop: 6,
-    letterSpacing: -0.2,
-  },
   content: {
     padding: 20,
     paddingBottom: 80,
   },
-  formContainer: {},
-  heroSection: {
-    marginTop: 12,
-    marginBottom: 28,
-    paddingHorizontal: 4,
+  // Home Screen Styles
+  homeContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    backgroundColor: PRIMARY_LIGHT,
   },
-  heroText: {
-    fontSize: 26,
-    fontWeight: "800",
+  bgDecorR1: {
+    position: "absolute",
+    top: 40,
+    left: -40,
+    width: 250,
+    height: 250,
+    backgroundColor: SECONDARY_LIGHT,
+    borderRadius: 125,
+    opacity: 0.6,
+  },
+  bgDecorR2: {
+    position: "absolute",
+    bottom: 20,
+    right: -50,
+    width: 300,
+    height: 300,
+    backgroundColor: "#ccfbf1", // cyan-100 fallback
+    borderRadius: 150,
+    opacity: 0.5,
+  },
+  bgDecorR3: {
+    position: "absolute",
+    top: "30%",
+    left: "10%",
+    width: 400,
+    height: 400,
+    backgroundColor: PRIMARY_LIGHT,
+    borderRadius: 200,
+    opacity: 0.4,
+  },
+  homeCenter: {
+    alignItems: "center",
+    zIndex: 10,
+    marginBottom: 40,
+  },
+  logoRow: {
+    marginBottom: 20,
+  },
+  logoWrapper: {
+    position: 'relative',
+  },
+  absoluteCompass: {
+    position: 'absolute',
+    bottom: -8,
+    right: -12,
+  },
+  homeTitle: {
+    fontSize: 56,
+    fontWeight: "900",
+    color: "#047857", // emerald-700
+    marginBottom: 16,
+  },
+  homeSubtitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  homeSubtitleText: {
+    fontSize: 20,
     color: "#334155",
-    letterSpacing: -0.5,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  homeDesc: {
+    fontSize: 16,
+    color: "#475569",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  homeFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  homeFooterText: {
+    fontSize: 12,
+    color: PRIMARY_COLOR,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  homeButton: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+    borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: PRIMARY_COLOR,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 10,
+  },
+  homeButtonText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "800",
+    marginRight: 8,
+  },
+  // Input & Result Screen Styles
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    marginTop: Platform.OS === 'android' ? 30 : 10,
+  },
+  backButtonText: {
+    color: PRIMARY_COLOR,
+    fontSize: 16,
+    fontWeight: "700",
+    marginLeft: 6,
+  },
+  inputHeader: {
+    alignItems: "center",
+    marginBottom: 24,
   },
   heroTextHighlight: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "900",
     color: PRIMARY_COLOR,
-    marginTop: 6,
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
-  block: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
+  inputSub: {
+    fontSize: 14,
+    color: "#64748b",
+    fontWeight: "500",
+  },
+  cardBlock: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.8)",
+    borderColor: PRIMARY_LIGHT,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  columns: {
+  cardHeaderRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
-  columnBlock: {
-    flex: 1,
-    marginHorizontal: 4,
+  iconBoxPrimary: {
+    width: 32,
+    height: 32,
+    backgroundColor: PRIMARY_LIGHT,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
   },
-  label: {
-    fontSize: 15,
+  iconBoxSecondary: {
+    width: 32,
+    height: 32,
+    backgroundColor: SECONDARY_LIGHT,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  cardHeaderText: {
+    fontSize: 18,
     fontWeight: "800",
     color: "#1e293b",
-    marginBottom: 14,
+  },
+  counterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  counterBtn: {
+    width: 44,
+    height: 44,
+    backgroundColor: PRIMARY_LIGHT,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  counterBtnText: {
+    fontSize: 24,
+    color: PRIMARY_COLOR,
+    fontWeight: "900",
+  },
+  counterValueBox: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    backgroundColor: BACKGROUND_COLOR,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  counterValueNum: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: PRIMARY_COLOR,
+  },
+  counterValueUnit: {
+    fontSize: 16,
+    color: "#64748b",
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  helpTextCenter: {
+    textAlign: "center",
+    fontSize: 12,
+    color: "#94a3b8",
+    marginTop: 12,
+  },
+  counterRowSmall: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  inputSmall: {
+    backgroundColor: BACKGROUND_COLOR,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    width: 60,
+    textAlign: "center",
+  },
+  companionList: {
+    gap: 12,
+  },
+  companionItemCard: {
+    backgroundColor: SECONDARY_LIGHT,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#ccfbf1",
+  },
+  companionItemLabel: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: SECONDARY_COLOR,
+    marginBottom: 8,
+  },
+  block: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#334155",
+    marginBottom: 12,
     letterSpacing: -0.2,
   },
   rowWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
   },
   chip: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#ffffff",
     borderRadius: 100,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
@@ -634,29 +963,23 @@ const styles = StyleSheet.create({
   chipText: {
     color: "#64748b",
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 13,
   },
   chipTextActive: {
     color: "#ffffff",
     fontWeight: "800",
   },
-  input: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0f172a",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
   actionButton: {
     marginTop: 16,
     backgroundColor: PRIMARY_COLOR,
     borderRadius: 20,
-    paddingVertical: 20,
+    paddingVertical: 18,
     alignItems: "center",
+    shadowColor: PRIMARY_COLOR,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   actionButtonText: {
     color: "#ffffff",
@@ -664,24 +987,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     letterSpacing: -0.2,
   },
-  resultContainer: {
-    marginTop: 10,
-  },
   resultHeader: {
     marginBottom: 32,
     alignItems: "center",
   },
   resultSummaryContainer: {
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 100,
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 20,
     marginBottom: 16,
+    shadowColor: PRIMARY_COLOR,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   resultSummary: {
     fontSize: 18,
     fontWeight: "800",
-    color: PRIMARY_COLOR,
+    color: "#ffffff",
   },
   metaRow: {
     flexDirection: "row",
@@ -697,10 +1022,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-  metaChipIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
   metaChipText: {
     fontSize: 15,
     fontWeight: "800",
@@ -713,7 +1034,6 @@ const styles = StyleSheet.create({
   timelineItem: {
     flexDirection: "row",
     marginBottom: 24,
-    position: "relative",
   },
   timelineNode: {
     width: 36,
@@ -737,7 +1057,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.02)",
+    borderColor: "rgba(0,0,0,0.04)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
@@ -754,22 +1079,20 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   timeBadgeInfo: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: PRIMARY_LIGHT,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
   },
   timeBadgeInfoText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#64748b",
+    color: PRIMARY_COLOR,
   },
   cardDetailsRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: BACKGROUND_COLOR,
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
@@ -800,14 +1123,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   miniTag: {
-    backgroundColor: PRIMARY_LIGHT + "60",
+    backgroundColor: SECONDARY_LIGHT,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
   miniTagText: {
     fontSize: 13,
-    color: PRIMARY_COLOR,
+    color: SECONDARY_COLOR,
     fontWeight: "700",
   },
   mapSection: {
@@ -815,8 +1138,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.04)",
-    padding: 14,
+    padding: 16,
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   mapTitle: {
     fontSize: 16,
@@ -830,38 +1158,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    backgroundColor: BACKGROUND_COLOR,
   },
   mapHelpText: {
     marginTop: 10,
     color: "#64748b",
     fontSize: 13,
     fontWeight: "600",
-  },
-  mapDiagText: {
-    marginTop: 6,
-    color: "#475569",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  mapErrorText: {
-    marginTop: 8,
-    color: "#b91c1c",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    marginTop: 10,
-    backgroundColor: "#ffffff",
-    borderWidth: 2,
-    borderColor: "#e2e8f0",
-    borderRadius: 20,
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#475569",
-    fontWeight: "900",
-    fontSize: 17,
   },
 });
