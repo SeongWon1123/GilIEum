@@ -1,0 +1,37 @@
+services:
+  # Django 백엔드 서비스
+  backend:
+    build: ./backend
+    container_name: onsik-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # SQLite DB 디렉토리 영속 저장 (파일 경로가 아닌 디렉토리에 마운트해야 함)
+      - backend-db:/app/data
+    environment:
+      - DJANGO_SETTINGS_MODULE=gilieum.settings
+      - DB_PATH=/app/data/db.sqlite3
+
+  # Expo 웹 프론트엔드 서비스
+  frontend:
+    build: ./frontend
+    container_name: onsik-frontend
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      # 브라우저에서 백엔드에 접근하는 URL (호스트 머신의 포트 매핑 기준)
+      - EXPO_PUBLIC_API_BASE_URL=http://localhost:8000
+      # 카카오맵 JavaScript 키 (Kakao Developers > JavaScript 키)
+      - EXPO_PUBLIC_KAKAO_JS_KEY=${EXPO_PUBLIC_KAKAO_JS_KEY}
+      # CI=1 은 Expo의 interactive 모드를 비활성화 (--non-interactive 대체)
+      - CI=1
+    depends_on:
+      - backend
+
+volumes:
+  backend-db:

@@ -1,0 +1,242 @@
+[
+  {
+    "model": "onsik.restaurant",
+    "pk": 1,
+    "fields": {
+      "name": "순천만 갈비",
+      "category": "한식",
+      "address": "전라남도 순천시 해룡면 순천만길 123",
+      "latitude": 34.9024,
+      "longitude": 127.5168,
+      "phone": "061-123-4567",
+      "business_hours": "월-일 11:00-21:00 (브레이크타임 15:00-17:00)",
+      "avg_rating": 4.5,
+      "rating_count": 128,
+      "description": "순천만 인근의 정통 갈비 전문점. 신선한 재료와 직화 방식으로 유명합니다. 가족 단위 방문객이 많으며 넓은 주차장을 보유하고 있습니다.",
+      "tags": "주차가능,단체석,예약가능",
+      "recommended_for": "가족,친구",
+      "created_at": "2024-01-15T09:30:00Z",
+      "updated_at": "2024-06-10T14:20:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 2,
+    "fields": {
+      "name": "낙안읍성 한정식",
+      "category": "한식",
+      "address": "전라남도 순천시 낙안면 충민길 30",
+      "latitude": 34.8833,
+      "longitude": 127.4167,
+      "phone": "061-234-5678",
+      "business_hours": "화-일 11:30-20:30 (월요일 휴무)",
+      "avg_rating": 4.7,
+      "rating_count": 215,
+      "description": "낙안읍성 인근에서 전통 방식으로 준비하는 한정식. 20여 가지 반찬과 함께 제공되는 풍성한 상차림이 특징입니다.",
+      "tags": "주차가능,단체석,예약필수,전통분위기",
+      "recommended_for": "가족,커플,단체",
+      "created_at": "2023-11-05T11:00:00Z",
+      "updated_at": "2024-07-22T10:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 3,
+    "fields": {
+      "name": "순천역 국밥",
+      "category": "한식",
+      "address": "전라남도 순천시 역전광장로 31",
+      "latitude": 34.9417,
+      "longitude": 127.4878,
+      "phone": "061-345-6789",
+      "business_hours": "매일 06:00-22:00",
+      "avg_rating": 4.2,
+      "rating_count": 342,
+      "description": "순천역 바로 앞 위치한 24년 전통의 국밥집. 진한 육수와 부드러운 고기가 일품이며 이른 아침부터 운영합니다.",
+      "tags": "주차어려움,혼밥가능,빠른서비스",
+      "recommended_for": "단독,친구",
+      "created_at": "2022-08-20T07:00:00Z",
+      "updated_at": "2024-05-01T08:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 4,
+    "fields": {
+      "name": "별량 해물탕",
+      "category": "한식",
+      "address": "전라남도 순천시 별량면 청산리 45",
+      "latitude": 34.8712,
+      "longitude": 127.5021,
+      "phone": "061-456-7890",
+      "business_hours": "월-토 11:00-21:00 (일요일 휴무, 브레이크타임 14:30-17:00)",
+      "avg_rating": 4.6,
+      "rating_count": 189,
+      "description": "신선한 제철 해산물을 사용한 해물탕 전문점. 랍스터, 전복 등 고급 해산물도 준비되어 있습니다.",
+      "tags": "주차가능,단체석,해산물전문",
+      "recommended_for": "가족,커플,친구",
+      "created_at": "2023-03-10T10:00:00Z",
+      "updated_at": "2024-08-15T09:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 5,
+    "fields": {
+      "name": "중앙 중화루",
+      "category": "중식",
+      "address": "전라남도 순천시 중앙로 112",
+      "latitude": 34.9488,
+      "longitude": 127.4871,
+      "phone": "061-567-8901",
+      "business_hours": "화-일 11:00-21:00 (월요일 휴무)",
+      "avg_rating": 4.3,
+      "rating_count": 276,
+      "description": "40년 전통의 중화요리 전문점. 직접 뽑은 면으로 만드는 짬뽕과 탕수육이 유명합니다.",
+      "tags": "주차가능,단체석,배달가능",
+      "recommended_for": "가족,친구,단독",
+      "created_at": "2021-05-12T12:00:00Z",
+      "updated_at": "2024-09-01T11:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 6,
+    "fields": {
+      "name": "팔마 양꼬치",
+      "category": "중식",
+      "address": "전라남도 순천시 팔마로 78",
+      "latitude": 34.9532,
+      "longitude": 127.4832,
+      "phone": "061-678-9012",
+      "business_hours": "월-일 17:00-24:00",
+      "avg_rating": 4.1,
+      "rating_count": 155,
+      "description": "정통 방식으로 구워내는 양꼬치와 양갈비 전문점. 중국 향신료와 함께 즐기는 맥주가 일품입니다.",
+      "tags": "주류판매,야외석,단체석",
+      "recommended_for": "친구,커플",
+      "created_at": "2023-07-01T17:00:00Z",
+      "updated_at": "2024-06-20T18:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 7,
+    "fields": {
+      "name": "순천 스시오마카세",
+      "category": "일식",
+      "address": "전라남도 순천시 조례동 현대아파트 상가 201호",
+      "latitude": 34.9601,
+      "longitude": 127.494,
+      "phone": "061-789-0123",
+      "business_hours": "화-일 12:00-22:00 (월요일 휴무, 점심·저녁 2회 운영)",
+      "avg_rating": 4.8,
+      "rating_count": 94,
+      "description": "현지 공수 신선한 생선으로 만드는 오마카세 스시. 예약제로 운영하며 소규모 인원에게 최적화된 코스 요리를 제공합니다.",
+      "tags": "예약필수,주차가능,프리미엄",
+      "recommended_for": "커플,친구",
+      "created_at": "2024-02-14T12:00:00Z",
+      "updated_at": "2024-09-10T13:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 8,
+    "fields": {
+      "name": "라멘야 도라에몽",
+      "category": "일식",
+      "address": "전라남도 순천시 연향동 순천대학로 5",
+      "latitude": 34.967,
+      "longitude": 127.501,
+      "phone": "061-890-1234",
+      "business_hours": "월-토 11:30-21:00 (일요일 휴무, 재료 소진 시 조기 마감)",
+      "avg_rating": 4.4,
+      "rating_count": 308,
+      "description": "진한 돈코츠 육수와 탱탱한 면발이 특징인 정통 일본식 라멘 전문점. 순천대 인근에 위치하여 젊은 층에게 인기가 높습니다.",
+      "tags": "혼밥가능,줄서는맛집,대학가맛집",
+      "recommended_for": "단독,친구",
+      "created_at": "2022-03-25T11:00:00Z",
+      "updated_at": "2024-07-05T12:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 9,
+    "fields": {
+      "name": "정원 카페 in 순천만",
+      "category": "카페",
+      "address": "전라남도 순천시 해룡면 순천만길 200",
+      "latitude": 34.898,
+      "longitude": 127.52,
+      "phone": "061-901-2345",
+      "business_hours": "월-일 09:00-20:00",
+      "avg_rating": 4.6,
+      "rating_count": 423,
+      "description": "순천만 갈대밭이 내려다보이는 뷰 카페. 시그니처 갈대 라테와 갈대밭 뷰 테라스석이 유명하며 인스타 명소로 알려져 있습니다.",
+      "tags": "뷰맛집,주차가능,인스타명소,반려동물동반가능",
+      "recommended_for": "커플,친구,가족",
+      "created_at": "2023-04-01T09:00:00Z",
+      "updated_at": "2024-08-30T10:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 10,
+    "fields": {
+      "name": "로스터리 드립카페 봄날",
+      "category": "카페",
+      "address": "전라남도 순천시 중앙로 45-2",
+      "latitude": 34.9505,
+      "longitude": 127.488,
+      "phone": "061-012-3456",
+      "business_hours": "화-일 10:00-21:00 (월요일 휴무)",
+      "avg_rating": 4.5,
+      "rating_count": 187,
+      "description": "자체 로스팅한 싱글 오리진 원두를 사용하는 스페셜티 커피 전문점. 핸드드립 커피와 직접 굽는 케이크가 시그니처 메뉴입니다.",
+      "tags": "스페셜티,공부가능,혼자오기좋음",
+      "recommended_for": "단독,커플,친구",
+      "created_at": "2023-09-15T10:00:00Z",
+      "updated_at": "2024-07-18T11:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 11,
+    "fields": {
+      "name": "풍년 떡볶이",
+      "category": "분식",
+      "address": "전라남도 순천시 향동 중앙시장 내",
+      "latitude": 34.9478,
+      "longitude": 127.4862,
+      "phone": "061-123-0987",
+      "business_hours": "월-토 10:00-19:00 (일요일 휴무)",
+      "avg_rating": 4.3,
+      "rating_count": 512,
+      "description": "순천 중앙시장 내 50년 전통의 떡볶이 노포. 매콤달콤한 소스와 쫄깃한 가래떡이 특징입니다. 어묵과 순대도 판매합니다.",
+      "tags": "전통시장,가성비좋음,포장가능",
+      "recommended_for": "단독,친구,가족",
+      "created_at": "2020-01-10T10:00:00Z",
+      "updated_at": "2024-05-30T09:00:00Z"
+    }
+  },
+  {
+    "model": "onsik.restaurant",
+    "pk": 12,
+    "fields": {
+      "name": "웰빙 김밥나라",
+      "category": "분식",
+      "address": "전라남도 순천시 연향동 16",
+      "latitude": 34.965,
+      "longitude": 127.4995,
+      "phone": "061-234-1098",
+      "business_hours": "매일 07:00-20:00",
+      "avg_rating": 4.0,
+      "rating_count": 267,
+      "description": "신선한 재료로 만든 다양한 종류의 김밥 전문점. 참치김밥, 치즈김밥 등 20가지 이상의 메뉴가 있으며 포장 주문도 가능합니다.",
+      "tags": "가성비좋음,포장가능,혼밥가능,배달가능",
+      "recommended_for": "단독,가족,친구",
+      "created_at": "2021-06-20T07:00:00Z",
+      "updated_at": "2024-04-15T08:00:00Z"
+    }
+  }
+]

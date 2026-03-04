@@ -1,0 +1,9 @@
+onsik-mvp/backend/__pycache__
+onsik-mvp/backend/**/__pycache__
+onsik-mvp/backend/db.sqlite3
+
+# Docker
+onsik-mvp/frontend/node_modules/
+onsik-mvp/frontend/.expo/
+onsik-mvp/frontend/web-build/
+docker-compose.override.yml
