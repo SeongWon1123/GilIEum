@@ -1,0 +1,74 @@
+[
+  {
+    "id": "suncheonman-wetland",
+    "name": "순천만습지",
+    "address_hint": "전남 순천시 순천만길 513-25",
+    "category": "nature",
+    "base_stay_min": 100,
+    "open_time": "08:00",
+    "close_time": "19:00",
+    "tags": ["family", "nature", "photo", "walk"],
+    "fallback_lat": 34.8895,
+    "fallback_lng": 127.5096
+  },
+  {
+    "id": "suncheonman-bay-garden",
+    "name": "순천만국가정원",
+    "address_hint": "전남 순천시 국가정원1호길 47",
+    "category": "garden",
+    "base_stay_min": 120,
+    "open_time": "09:00",
+    "close_time": "20:00",
+    "tags": ["family", "couple", "nature", "photo", "walk"],
+    "fallback_lat": 34.9341,
+    "fallback_lng": 127.5035
+  },
+  {
+    "id": "naganeupseong",
+    "name": "낙안읍성",
+    "address_hint": "전남 순천시 낙안면 충민길 30",
+    "category": "history",
+    "base_stay_min": 90,
+    "open_time": "09:00",
+    "close_time": "18:00",
+    "tags": ["family", "history", "education"],
+    "fallback_lat": 34.9483,
+    "fallback_lng": 127.3437
+  },
+  {
+    "id": "suncheon-drama-set",
+    "name": "순천드라마촬영장",
+    "address_hint": "전남 순천시 비례골길 24",
+    "category": "culture",
+    "base_stay_min": 80,
+    "open_time": "09:00",
+    "close_time": "18:00",
+    "tags": ["friends", "photo", "culture"],
+    "fallback_lat": 34.9396,
+    "fallback_lng": 127.5254
+  },
+  {
+    "id": "songgwangsa",
+    "name": "송광사",
+    "address_hint": "전남 순천시 송광면 신평리 12",
+    "category": "temple",
+    "base_stay_min": 70,
+    "open_time": "08:30",
+    "close_time": "17:30",
+    "tags": ["healing", "history", "quiet"],
+    "fallback_lat": 35.0022,
+    "fallback_lng": 127.2587
+  },
+  {
+    "id": "jorye-lake-park",
+    "name": "조례호수공원",
+    "address_hint": "전남 순천시 조례동",
+    "category": "park",
+    "base_stay_min": 50,
+    "open_time": "00:00",
+    "close_time": "23:59",
+    "tags": ["walk", "friends", "family", "free"],
+    "fallback_lat": 34.9515,
+    "fallback_lng": 127.5208
+  }
+]

@@ -1,0 +1,17 @@
+# 환경변수 및 보안 파일 (절대 올라가면 안 됨)
+.env
+.env.*
+
+# 프론트엔드 (ongil_mvp_ui) 무거운 라이브러리 제외
+node_modules/
+.expo/
+
+# 백엔드 (ongil_mvp) 파이썬 찌꺼기 제외
+__pycache__/
+*.pyc
+
+# 기획서, 엑셀 등 불필요한 문서 제외 (원하시면 유지)
+*.hwp
+*.xlsx
+*.pptx
+*.pdf
