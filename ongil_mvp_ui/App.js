@@ -12,6 +12,7 @@ import {
   UIManager,
   Dimensions,
   Pressable,
+  Modal,
 } from "react-native";
 import { Feather, FontAwesome5 } from "@expo/vector-icons";
 
@@ -32,25 +33,20 @@ const SPOTS = [
 ];
 
 const ageOptions = [
+  { label: "10대 미만(어린이)", value: "child" },
   { label: "10대", value: "10s" },
   { label: "20대", value: "20s" },
   { label: "30대", value: "30s" },
   { label: "40대", value: "40s" },
   { label: "50대", value: "50s" },
-  { label: "60대 이상", value: "60plus" },
+  { label: "60대", value: "60s" },
+  { label: "65세 이상(노인)", value: "senior" },
 ];
 
 const genderOptions = [
   { label: "남성", value: "male" },
   { label: "여성", value: "female" },
   { label: "선택 안함", value: "other" },
-];
-
-const companionOptions = [
-  { label: "가족", value: "family" },
-  { label: "친구", value: "friends" },
-  { label: "연인", value: "couple" },
-  { label: "혼자", value: "solo" },
 ];
 
 const transportOptions = [
@@ -91,11 +87,11 @@ function OptionRow({ title, value, onChange, options }) {
   );
 }
 
-function recommendCourse({ companionType, placeCount, transport }) {
+function recommendCourse({ placeCount, transport }) {
   const speed = transport === "car" ? 35 : transport === "public" ? 22 : 4;
   const scored = SPOTS.map((spot) => {
     let score = 100 - spot.dist * 2;
-    if (spot.tags.includes(companionType)) score += 20;
+    // In the future, this is where the age-based companion inference logic would give scores
     if (transport === "walk" && spot.tags.includes("walk")) score += 10;
     return { ...spot, score };
   })
@@ -379,26 +375,30 @@ function KakaoMapSection({ stops }) {
 
 export default function App() {
   const [screen, setScreen] = useState('home'); // 'home', 'input', 'result'
-  const [companionCount, setCompanionCount] = useState("3");
+  const [companionCount, setCompanionCount] = useState("2");
   const [companions, setCompanions] = useState([
-    { id: 0, age: "20s", gender: "female", label: "본인" },
-    { id: 1, age: "20s", gender: "female", label: "동행 1" },
-    { id: 2, age: "20s", gender: "female", label: "동행 2" },
+    { id: 1, age: "20s", gender: "other", label: "동행 1" },
+    { id: 2, age: "20s", gender: "other", label: "동행 2" },
   ]);
-  const [companionType, setCompanionType] = useState("friends");
   const [transport, setTransport] = useState("public");
   const [placeCount, setPlaceCount] = useState("3");
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [isTailoredMode, setIsTailoredMode] = useState(false);
+  const [tailoringTarget, setTailoringTarget] = useState(null);
+  const [tailoringEmoji, setTailoringEmoji] = useState("");
 
   // Sync companion array size with companionCount input
   useEffect(() => {
-    const count = parseInt(companionCount, 10);
-    if (!isNaN(count) && count > 0 && count <= 10) {
+    if (companionCount === "") return;
+    let count = parseInt(companionCount, 10);
+    if (!isNaN(count)) {
+      count = Math.max(0, Math.min(count, 10)); // allow 0 to 10
       setCompanions((prev) => {
         if (count === prev.length) return prev;
         const newArr = [...prev];
         if (count > prev.length) {
           for (let i = prev.length; i < count; i++) {
-            newArr.push({ id: i, age: "20s", gender: "other", label: `동행 ${i}` });
+            newArr.push({ id: i + 1, age: "20s", gender: "other", label: `동행 ${i + 1}` });
           }
         } else {
           newArr.length = count;
@@ -417,11 +417,69 @@ export default function App() {
   const parsedPlaceCount = Math.max(1, Math.min(5, Number(placeCount) || 3));
 
   const result = useMemo(
-    () => recommendCourse({ companionType, placeCount: parsedPlaceCount, transport }),
-    [companionType, parsedPlaceCount, transport, screen]
+    () => recommendCourse({ placeCount: parsedPlaceCount, transport }),
+    [parsedPlaceCount, transport, screen]
   );
 
+  const getTailoringTarget = () => {
+    const hasChild = companions.some((comp) => comp.age === "child");
+    const hasSenior = companions.some((comp) => comp.age === "senior");
+    if (hasChild && hasSenior) return "both";
+    if (hasChild) return "child";
+    if (hasSenior) return "senior";
+    return null;
+  };
+
+  const calculateTailoringEmoji = () => {
+    let emoji = "";
+    const children = companions.filter((comp) => comp.age === "child");
+    const seniors = companions.filter((comp) => comp.age === "senior");
+
+    if (children.length > 0) {
+      const hasBoy = children.some(c => c.gender === "male");
+      const hasGirl = children.some(c => c.gender === "female");
+      if (hasBoy && !hasGirl && children.every(c => c.gender !== "other")) emoji += "👦";
+      else if (hasGirl && !hasBoy && children.every(c => c.gender !== "other")) emoji += "👧";
+      else emoji += "👦👧"; // Default to both for mixed or 'other'
+    }
+
+    if (seniors.length > 0) {
+      if (emoji.length > 0) emoji += " "; // Space separator if both exists
+      const hasGrandpa = seniors.some(c => c.gender === "male");
+      const hasGrandma = seniors.some(c => c.gender === "female");
+      if (hasGrandpa && !hasGrandma && seniors.every(c => c.gender !== "other")) emoji += "👴";
+      else if (hasGrandma && !hasGrandpa && seniors.every(c => c.gender !== "other")) emoji += "👵";
+      else emoji += "👴👵"; // Default to both for mixed or 'other'
+    }
+
+    return emoji || "🧒👴";
+  };
+
   const handleRecommend = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    const target = getTailoringTarget();
+    if (target) {
+      setTailoringTarget(target);
+      setTailoringEmoji(calculateTailoringEmoji());
+      setShowAgeModal(true);
+    } else {
+      setIsTailoredMode(false);
+      setTailoringTarget(null);
+      setTailoringEmoji("");
+      setScreen('result');
+    }
+  };
+
+  const handleTailoredYes = () => {
+    setShowAgeModal(false);
+    setIsTailoredMode(true);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    setScreen('result');
+  };
+
+  const handleTailoredNo = () => {
+    setShowAgeModal(false);
+    setIsTailoredMode(false);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
     setScreen('result');
   };
@@ -528,7 +586,7 @@ export default function App() {
         </View>
 
         <View style={styles.counterRowSmall}>
-          <Text style={styles.label}>총 인원수: </Text>
+          <Text style={styles.label}>동반 인원수: </Text>
           <TextInput
             value={companionCount}
             onChangeText={(text) => setCompanionCount(text.replace(/[^0-9]/g, ''))}
@@ -559,12 +617,6 @@ export default function App() {
       </View>
 
       <OptionRow
-        title="동행 유형"
-        value={companionType}
-        onChange={setCompanionType}
-        options={companionOptions}
-      />
-      <OptionRow
         title="이동수단"
         value={transport}
         onChange={setTransport}
@@ -591,9 +643,31 @@ export default function App() {
       </Pressable>
 
       <View style={styles.resultHeader}>
+        {isTailoredMode && tailoringTarget && (
+          <View style={styles.tailoredBadge}>
+            <Text style={styles.tailoredBadgeEmoji}>
+              {tailoringEmoji}
+            </Text>
+            <Text style={styles.tailoredBadgeText}>
+              {tailoringTarget === "both" ? "어린이 & 노인 맞춤 코스" : tailoringTarget === "child" ? "어린이 맞춤 코스" : "어르신 맞춤 코스"}
+            </Text>
+          </View>
+        )}
         <View style={styles.resultSummaryContainer}>
           <Text style={styles.resultSummary}>{result.summary}</Text>
         </View>
+        {isTailoredMode && tailoringTarget && (
+          <View style={styles.tailoredInfoBox}>
+            <Feather name="info" size={16} color="#0369a1" style={{ marginRight: 8 }} />
+            <Text style={styles.tailoredInfoText}>
+              {tailoringTarget === "both"
+                ? "이동 거리와 체류 시간을 어린이·노인에 맞춰 조정했습니다. 편안하고 안전한 동선으로 구성되었습니다."
+                : tailoringTarget === "child"
+                  ? "어린이가 걷기 좋은 이동 거리와 여유로운 체류 시간으로 조정했습니다."
+                  : "어르신이 걷기 편한 이동 거리와 여유로운 체류 시간으로 조정했습니다."}
+            </Text>
+          </View>
+        )}
         <View style={styles.metaRow}>
           <View style={styles.metaChip}>
             <Feather name="navigation" size={16} color={PRIMARY_COLOR} style={{ marginRight: 6 }} />
@@ -657,6 +731,54 @@ export default function App() {
       {screen === 'home' && renderHome()}
       {screen === 'input' && renderInput()}
       {screen === 'result' && renderResult()}
+
+      {/* 맞춤 추천 확인 모달 */}
+      <Modal
+        visible={showAgeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAgeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconRow}>
+              <Text style={styles.modalIconText}>
+                {tailoringEmoji}
+              </Text>
+            </View>
+            <Text style={styles.modalTitle}>
+              {tailoringTarget === "both" ? "어린이 & 노인에 맞춘\n동선을 추천해드릴까요?" :
+                tailoringTarget === "child" ? "어린이에 맞춘\n동선을 추천해드릴까요?" :
+                  "어르신에 맞춘\n동선을 추천해드릴까요?"}
+            </Text>
+            <Text style={styles.modalSubText}>
+              {tailoringTarget === "both" ? "어린이·노인이 포함된 그룹에 맞춰\n더 편안하고 안전한 코스를 제안해드립니다." :
+                tailoringTarget === "child" ? "어린이가 포함된 그룹에 맞춰\n더 편안하고 안전한 코스를 제안해드립니다." :
+                  "연세가 있으신 분이 포함된 그룹에 맞춰\n더 편안하고 안전한 코스를 제안해드립니다."}
+            </Text>
+            <View style={styles.modalButtonRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.modalBtnNo,
+                  pressed && { opacity: 0.8 }
+                ]}
+                onPress={handleTailoredNo}
+              >
+                <Text style={styles.modalBtnNoText}>아니오</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.modalBtnYes,
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }
+                ]}
+                onPress={handleTailoredYes}
+              >
+                <Text style={styles.modalBtnYesText}>예, 추천해주세요!</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1165,5 +1287,123 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 13,
     fontWeight: "600",
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 28,
+    padding: 32,
+    width: "100%",
+    maxWidth: 380,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  modalIconRow: {
+    marginBottom: 20,
+  },
+  modalIconText: {
+    fontSize: 48,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#1e293b",
+    textAlign: "center",
+    lineHeight: 30,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  modalSubText: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 28,
+    fontWeight: "500",
+  },
+  modalButtonRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  modalBtnNo: {
+    flex: 1,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  modalBtnNoText: {
+    color: "#64748b",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  modalBtnYes: {
+    flex: 1.5,
+    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    shadowColor: PRIMARY_COLOR,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  modalBtnYesText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  // Tailored Result Styles
+  tailoredBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fef3c7",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#fde68a",
+  },
+  tailoredBadgeEmoji: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  tailoredBadgeText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#92400e",
+  },
+  tailoredInfoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#e0f2fe",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+  },
+  tailoredInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0c4a6e",
+    fontWeight: "600",
+    lineHeight: 20,
   },
 });
