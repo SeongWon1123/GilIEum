@@ -8,13 +8,14 @@ npm install
 npm run start
 ```
 
-## 카카오맵 연동 (웹)
+## 카카오맵 연동 (필수 설정)
 
-1. `ongil_mvp_ui` 폴더에 `.env` 파일 생성
-2. 아래 값 추가
+1. `ongil_mvp_ui` 폴더 안에 있는 `.env.example` 파일을 복사하여 `.env` 파일 생성
+2. 발급받은 카카오 API 키 2개 입력
 
 ```bash
-EXPO_PUBLIC_KAKAO_JS_KEY=여기에_JavaScript_키
+EXPO_PUBLIC_KAKAO_JS_KEY=여기에_자바스크립트_키
+EXPO_PUBLIC_KAKAO_REST_KEY=여기에_REST_API_키
 ```
 
 3. 재실행
