@@ -140,6 +140,9 @@ npx expo start
 | `GET` | `/api/restaurants/<id>/` | 맛집 상세 조회 (최근 평가 포함) |
 | `POST` | `/api/restaurants/<id>/rate/` | 평가 등록 |
 | `GET` | `/api/restaurants/categories/` | 카테고리 목록 조회 |
+| `POST` | `/api/user-selections/log/` | 사용자 조건 선택 로그 저장 |
+| `GET` | `/api/user-selections/stats/` | 사용자 조건 선택 로그 집계 조회 |
+| `GET` | `/api/user-selections/export/csv/` | 사용자 조건 선택 로그 CSV 다운로드 |
 
 ### 평가 등록 예시 (POST `/api/restaurants/1/rate/`)
 

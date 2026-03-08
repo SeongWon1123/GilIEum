@@ -3,7 +3,7 @@
 """
 
 from rest_framework import serializers
-from .models import Restaurant, UserRating
+from .models import Restaurant, UserRating, UserSelectionLog
 
 
 class UserRatingSerializer(serializers.ModelSerializer):
@@ -84,3 +84,24 @@ class RestaurantDetailSerializer(RestaurantListSerializer):
         """최근 5개 평가 반환"""
         recent = obj.ratings.all()[:5]
         return UserRatingSerializer(recent, many=True).data
+
+
+class UserSelectionLogSerializer(serializers.ModelSerializer):
+    """사용자 선택 로그 직렬화"""
+
+    class Meta:
+        model = UserSelectionLog
+        fields = [
+            'id',
+            'age_group',
+            'age_gender_counts',
+            'companion_type',
+            'companion_count',
+            'transport',
+            'categories',
+            'location',
+            'special_prompt_shown',
+            'flow_choice',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']

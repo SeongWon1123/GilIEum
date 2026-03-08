@@ -1,6 +1,6 @@
 /**
  * 길이음 - 온식 앱 진입점
- * React Navigation 스택 설정 (UserInput → RestaurantList → RestaurantDetail)
+ * React Navigation 스택 설정 (Start → UserInput → Map/List → Detail)
  */
 
 import React from 'react';
@@ -8,7 +8,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 
+import StartScreen from './screens/StartScreen';
 import UserInputScreen from './screens/UserInputScreen';
+import SpecialFlowConfirmScreen from './screens/SpecialFlowConfirmScreen';
 import RestaurantMapScreen from './screens/RestaurantMapScreen';
 import RestaurantListScreen from './screens/RestaurantListScreen';
 import RestaurantDetailScreen from './screens/RestaurantDetailScreen';
@@ -23,7 +25,7 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="light" backgroundColor={THEME_COLOR} />
       <Stack.Navigator
-        initialRouteName="UserInput"
+        initialRouteName="Start"
         screenOptions={{
           headerStyle: { backgroundColor: THEME_COLOR },
           headerTintColor: '#fff',
@@ -32,11 +34,21 @@ export default function App() {
           contentStyle: { backgroundColor: '#FFF8F5' },
         }}
       >
+        <Stack.Screen
+          name="Start"
+          component={StartScreen}
+          options={{ title: '🍽️ 길이음', headerBackVisible: false }}
+        />
         {/* 사용자 정보 입력 화면 */}
         <Stack.Screen
           name="UserInput"
           component={UserInputScreen}
           options={{ title: '🍽️ 길이음 - 맛집 탐방' }}
+        />
+        <Stack.Screen
+          name="SpecialFlowConfirm"
+          component={SpecialFlowConfirmScreen}
+          options={{ title: '맞춤 추천 확인' }}
         />
         <Stack.Screen
           name="RestaurantMap"

@@ -2,15 +2,20 @@
 온식 - API 뷰 (Views)
 """
 
+import csv
+from collections import Counter
+
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Restaurant, UserRating
+from .models import Restaurant, UserRating, UserSelectionLog
 from .serializers import (
     RestaurantListSerializer,
     RestaurantDetailSerializer,
     UserRatingSerializer,
+    UserSelectionLogSerializer,
 )
 
 
@@ -68,7 +73,7 @@ def rate_restaurant(request, pk):
     serializer = UserRatingSerializer(data=request.data)
     if serializer.is_valid():
         # 평가 저장 후 음식점 평균 평점 업데이트
-        rating = serializer.save(restaurant=restaurant)
+        serializer.save(restaurant=restaurant)
         restaurant.update_avg_rating()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -84,3 +89,96 @@ def category_list(request):
         .order_by('category')
     )
     return Response(list(categories))
+
+
+@api_view(['POST'])
+def create_user_selection_log(request):
+    """사용자 추천 조건 선택 로그 저장"""
+    serializer = UserSelectionLogSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def user_selection_log_stats(request):
+    """사용자 선택 로그 간단 집계 데이터 반환"""
+    logs = UserSelectionLog.objects.all()
+    total_count = logs.count()
+
+    def count_by(field_name):
+        values = logs.values_list(field_name, flat=True)
+        normalized = [value or '미선택' for value in values]
+        return dict(Counter(normalized))
+
+    category_counter = Counter()
+    for category_list in logs.values_list('categories', flat=True):
+        if isinstance(category_list, list):
+            category_counter.update(category_list)
+
+    special_prompt_shown_count = logs.filter(special_prompt_shown=True).count()
+
+    return Response(
+        {
+            'total_logs': total_count,
+            'special_prompt_shown_count': special_prompt_shown_count,
+            'special_prompt_shown_ratio': (
+                round(special_prompt_shown_count / total_count, 4)
+                if total_count > 0
+                else 0
+            ),
+            'by_age_group': count_by('age_group'),
+            'by_companion_type': count_by('companion_type'),
+            'by_transport': count_by('transport'),
+            'by_flow_choice': count_by('flow_choice'),
+            'by_location': count_by('location'),
+            'by_category': dict(category_counter),
+        }
+    )
+
+
+@api_view(['GET'])
+def export_user_selection_logs_csv(request):
+    """사용자 선택 로그 CSV 다운로드"""
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = (
+        'attachment; filename="user_selection_logs.csv"'
+    )
+
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            'id',
+            'created_at',
+            'age_group',
+            'age_gender_counts',
+            'companion_type',
+            'companion_count',
+            'transport',
+            'categories',
+            'location',
+            'special_prompt_shown',
+            'flow_choice',
+        ]
+    )
+
+    logs = UserSelectionLog.objects.all().order_by('-created_at')
+    for log in logs:
+        writer.writerow(
+            [
+                log.id,
+                log.created_at.isoformat(),
+                log.age_group,
+                log.age_gender_counts,
+                log.companion_type,
+                log.companion_count,
+                log.transport,
+                log.categories,
+                log.location,
+                log.special_prompt_shown,
+                log.flow_choice,
+            ]
+        )
+
+    return response

@@ -69,3 +69,29 @@ class UserRating(models.Model):
 
     def __str__(self):
         return f'{self.restaurant.name} - {self.score}점 ({self.created_at.date()})'
+
+
+class UserSelectionLog(models.Model):
+    """사용자 추천 조건 선택 로그 모델"""
+
+    age_group = models.CharField(max_length=30, blank=True, verbose_name='대표 연령대')
+    age_gender_counts = models.JSONField(default=dict, verbose_name='연령대별 성별 인원')
+    companion_type = models.CharField(max_length=20, blank=True, verbose_name='동행유형')
+    companion_count = models.IntegerField(default=1, verbose_name='동행자 수')
+    transport = models.CharField(max_length=20, blank=True, verbose_name='이동수단')
+    categories = models.JSONField(default=list, verbose_name='선택 카테고리')
+    location = models.CharField(max_length=50, blank=True, verbose_name='기준 위치')
+    special_prompt_shown = models.BooleanField(
+        default=False,
+        verbose_name='어린이/노인 맞춤 확인창 노출 여부',
+    )
+    flow_choice = models.CharField(max_length=10, blank=True, verbose_name='추천 흐름 선택')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='생성일')
+
+    class Meta:
+        verbose_name = '사용자 선택 로그'
+        verbose_name_plural = '사용자 선택 로그 목록'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.age_group} / {self.companion_type} / {self.created_at:%Y-%m-%d %H:%M}'

@@ -1,7 +1,7 @@
 /**
  * 사용자 입력 화면 (UserInputScreen)
- * - 연령대별 성별 인원, 동행 유형, 이동수단, 음식 카테고리 선택
- * - "맛집 찾기" 버튼으로 RestaurantList 이동
+ * - 동행자별 연령대/성별 입력(기본 2명, 1명씩 추가)
+ * - 동행 유형, 이동수단, 위치, 음식 카테고리 선택
  */
 
 import React, { useState } from 'react';
@@ -13,21 +13,26 @@ import {
   StyleSheet,
   SafeAreaView,
   Platform,
+  Alert,
+  Linking,
 } from 'react-native';
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
-// ─── 색상 상수 ───────────────────────────────────────────────
 const PRIMARY = '#FF6B35';
 const PRIMARY_LIGHT = '#FFF0EB';
 const TEXT_DARK = '#1A1A1A';
 const TEXT_GRAY = '#888888';
 const BORDER = '#E5E5E5';
 
-// ─── 선택 옵션 데이터 ─────────────────────────────────────────
 const AGE_GROUPS = ['10대', '20대', '30대', '40대', '50대이상'];
+const GENDER_OPTIONS = ['남성', '여성'];
 const COMPANION_TYPES = ['단독', '커플', '친구', '가족', '단체'];
 const TRANSPORTS = ['도보', '자차', '대중교통'];
 const CATEGORIES = ['전체', '한식', '중식', '일식', '카페', '분식'];
 const LOCATION_OPTIONS = ['순천역', '순천만국가정원', '중앙시장', '연향동'];
+const CHILD_AGE_GROUP = '10대';
+const SENIOR_AGE_GROUP = '50대이상';
 
 const LOCATION_COORDS = {
   순천역: { name: '순천역', latitude: 34.9417, longitude: 127.4878 },
@@ -36,9 +41,6 @@ const LOCATION_COORDS = {
   연향동: { name: '연향동', latitude: 34.967, longitude: 127.501 },
 };
 
-// ─── 컴포넌트 ─────────────────────────────────────────────────
-
-/** 단일 선택 칩 그룹 */
 function ChipGroup({ options, selected, onSelect }) {
   return (
     <View style={styles.chipRow}>
@@ -51,9 +53,7 @@ function ChipGroup({ options, selected, onSelect }) {
             onPress={() => onSelect(opt)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>
-              {opt}
-            </Text>
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
           </TouchableOpacity>
         );
       })}
@@ -61,7 +61,6 @@ function ChipGroup({ options, selected, onSelect }) {
   );
 }
 
-/** 다중 선택 칩 그룹 (카테고리용) */
 function MultiChipGroup({ options, selected, onToggle }) {
   return (
     <View style={styles.chipRow}>
@@ -74,9 +73,7 @@ function MultiChipGroup({ options, selected, onToggle }) {
             onPress={() => onToggle(opt)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>
-              {opt}
-            </Text>
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
           </TouchableOpacity>
         );
       })}
@@ -84,35 +81,43 @@ function MultiChipGroup({ options, selected, onToggle }) {
   );
 }
 
-/** 연령대별 성별 인원 카운터 행 */
-function AgeGenderCountRow({ label, maleCount, femaleCount, onMaleDecrease, onMaleIncrease, onFemaleDecrease, onFemaleIncrease }) {
+function CompanionPersonCard({ index, person, onChangeAgeGroup, onChangeGender }) {
   return (
-    <View style={styles.ageCountRow}>
-      <Text style={styles.ageCountLabel}>{label}</Text>
-      <View style={styles.ageGenderWrap}>
-        <View style={styles.ageCountControl}>
-          <Text style={styles.genderMiniLabel}>남</Text>
-          <TouchableOpacity style={styles.ageCountBtn} onPress={onMaleDecrease}>
-            <Text style={styles.ageCountBtnText}>－</Text>
-          </TouchableOpacity>
-          <Text style={styles.ageCountValue}>{maleCount}명</Text>
-          <TouchableOpacity style={styles.ageCountBtn} onPress={onMaleIncrease}>
-            <Text style={styles.ageCountBtnText}>＋</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.ageCountControl}>
-          <Text style={styles.genderMiniLabel}>여</Text>
-          <TouchableOpacity style={styles.ageCountBtn} onPress={onFemaleDecrease}>
-            <Text style={styles.ageCountBtnText}>－</Text>
-          </TouchableOpacity>
-          <Text style={styles.ageCountValue}>{femaleCount}명</Text>
-          <TouchableOpacity style={styles.ageCountBtn} onPress={onFemaleIncrease}>
-            <Text style={styles.ageCountBtnText}>＋</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={styles.personCard}>
+      <Text style={styles.personTitle}>동행자 {index + 1}</Text>
+
+      <Text style={styles.personLabel}>연령대</Text>
+      <ChipGroup options={AGE_GROUPS} selected={person.ageGroup} onSelect={onChangeAgeGroup} />
+
+      <Text style={styles.personLabel}>성별</Text>
+      <ChipGroup options={GENDER_OPTIONS} selected={person.gender} onSelect={onChangeGender} />
     </View>
   );
+}
+
+function createDefaultCompanion(id) {
+  return { id, ageGroup: '20대', gender: '남성' };
+}
+
+function buildInitialCompanions() {
+  return [createDefaultCompanion(1), createDefaultCompanion(2)];
+}
+
+function buildAgeGenderCountsFromCompanions(companions) {
+  const counts = {
+    '10대': { 남성: 0, 여성: 0 },
+    '20대': { 남성: 0, 여성: 0 },
+    '30대': { 남성: 0, 여성: 0 },
+    '40대': { 남성: 0, 여성: 0 },
+    '50대이상': { 남성: 0, 여성: 0 },
+  };
+
+  companions.forEach((person) => {
+    if (!counts[person.ageGroup]) return;
+    counts[person.ageGroup][person.gender] += 1;
+  });
+
+  return counts;
 }
 
 function formatAgeGenderSummary(ageGenderCounts) {
@@ -125,36 +130,44 @@ function formatAgeGenderSummary(ageGenderCounts) {
   }).filter(Boolean);
 }
 
-// ─── 메인 화면 ────────────────────────────────────────────────
+function formatCompanionSummary(companions) {
+  return companions.map((person, index) => `${index + 1}번 ${person.ageGroup}/${person.gender}`);
+}
+
 export default function UserInputScreen({ navigation }) {
   const [companionType, setCompanionType] = useState('친구');
   const [transport, setTransport] = useState('도보');
   const [categories, setCategories] = useState(['전체']);
   const [location, setLocation] = useState('순천역');
-  const [ageGenderCounts, setAgeGenderCounts] = useState({
-    '10대': { 남성: 0, 여성: 0 },
-    '20대': { 남성: 0, 여성: 0 },
-    '30대': { 남성: 0, 여성: 0 },
-    '40대': { 남성: 0, 여성: 0 },
-    '50대이상': { 남성: 0, 여성: 0 },
-  });
+  const [companions, setCompanions] = useState(buildInitialCompanions);
+  const [nextCompanionId, setNextCompanionId] = useState(3);
 
-  const totalMaleCount = AGE_GROUPS.reduce((sum, group) => sum + (ageGenderCounts[group]?.남성 || 0), 0);
-  const totalFemaleCount = AGE_GROUPS.reduce((sum, group) => sum + (ageGenderCounts[group]?.여성 || 0), 0);
-  const totalAgeCount = totalMaleCount + totalFemaleCount;
+  const [showAdminTools, setShowAdminTools] = useState(false);
+  const [adminTapCount, setAdminTapCount] = useState(0);
+
+  const ageGenderCounts = buildAgeGenderCountsFromCompanions(companions);
+  const ageGenderSummary = formatAgeGenderSummary(ageGenderCounts);
+  const companionSummary = formatCompanionSummary(companions);
+
+  const totalMaleCount = companions.filter((person) => person.gender === '남성').length;
+  const totalFemaleCount = companions.filter((person) => person.gender === '여성').length;
+  const totalAgeCount = companions.length;
+
+  const childCount = companions.filter((person) => person.ageGroup === CHILD_AGE_GROUP).length;
+  const seniorCount = companions.filter((person) => person.ageGroup === SENIOR_AGE_GROUP).length;
+  const hasChildOrSenior = childCount > 0 || seniorCount > 0;
 
   const derivedAgeGroup = (() => {
     if (totalAgeCount === 0) return '미선택';
+
     const sorted = AGE_GROUPS
-      .map((group) => {
-        const male = ageGenderCounts[group]?.남성 || 0;
-        const female = ageGenderCounts[group]?.여성 || 0;
-        return { group, count: male + female };
-      })
+      .map((group) => ({
+        group,
+        count: companions.filter((person) => person.ageGroup === group).length,
+      }))
       .sort((a, b) => b.count - a.count);
-    if (sorted[0].count > 0 && sorted[1]?.count > 0) {
-      return '혼합';
-    }
+
+    if (sorted[0].count > 0 && sorted[1]?.count > 0) return '혼합';
     return sorted[0].group;
   })();
 
@@ -164,27 +177,28 @@ export default function UserInputScreen({ navigation }) {
     return totalMaleCount > totalFemaleCount ? '남성' : '여성';
   })();
 
-  const ageGenderSummary = formatAgeGenderSummary(ageGenderCounts);
-
-  const updateAgeGenderCount = (group, gender, delta) => {
-    setAgeGenderCounts((prev) => {
-      const current = prev[group]?.[gender] || 0;
-      return {
-        ...prev,
-        [group]: {
-          ...prev[group],
-          [gender]: Math.max(0, current + delta),
-        },
-      };
-    });
+  const updateCompanion = (id, field, value) => {
+    setCompanions((prev) =>
+      prev.map((person) => (person.id === id ? { ...person, [field]: value } : person))
+    );
   };
 
-  /** 카테고리 토글 - "전체" 선택 시 나머지 해제, 그 반대도 처리 */
+  const addCompanion = () => {
+    setCompanions((prev) => [...prev, createDefaultCompanion(nextCompanionId)]);
+    setNextCompanionId((prev) => prev + 1);
+  };
+
+  const resetCompanions = () => {
+    setCompanions(buildInitialCompanions());
+    setNextCompanionId(3);
+  };
+
   const toggleCategory = (cat) => {
     if (cat === '전체') {
       setCategories(['전체']);
       return;
     }
+
     setCategories((prev) => {
       const withoutAll = prev.filter((c) => c !== '전체');
       if (withoutAll.includes(cat)) {
@@ -195,89 +209,171 @@ export default function UserInputScreen({ navigation }) {
     });
   };
 
-  /** 맛집 찾기 버튼 → RestaurantMap 화면으로 이동 */
-  const handleSearch = () => {
-    navigation.navigate('RestaurantMap', {
-      ageGroup: derivedAgeGroup,
-      ageGenderCounts,
-      ageGenderSummary,
-      gender: derivedGender,
-      companionType,
-      companionCount: totalAgeCount > 0 ? totalAgeCount : 1,
-      transport,
-      categories,
-      location,
-      selectedLocation: LOCATION_COORDS[location],
+  const buildNavigationParams = () => ({
+    ageGroup: derivedAgeGroup,
+    ageGenderCounts,
+    ageGenderSummary,
+    companionSummary,
+    gender: derivedGender,
+    companionType,
+    companionCount: totalAgeCount > 0 ? totalAgeCount : 1,
+    transport,
+    categories,
+    location,
+    selectedLocation: LOCATION_COORDS[location],
+  });
+
+  const buildSelectionPayload = (flowChoice, specialPromptShown) => ({
+    age_group: derivedAgeGroup,
+    age_gender_counts: ageGenderCounts,
+    companion_type: companionType,
+    companion_count: totalAgeCount > 0 ? totalAgeCount : 1,
+    transport,
+    categories,
+    location,
+    special_prompt_shown: specialPromptShown,
+    flow_choice: flowChoice,
+  });
+
+  const saveSelectionLog = async (selectionPayload) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/user-selections/log/`, selectionPayload);
+    } catch (error) {
+      console.log('사용자 선택 로그 저장 실패', error?.message);
+    }
+  };
+
+  const openAdminEndpoint = async (endpoint) => {
+    const targetUrl = `${API_BASE_URL}${endpoint}`;
+
+    try {
+      if (Platform.OS === 'web') {
+        window.open(targetUrl, '_blank');
+        return;
+      }
+      await Linking.openURL(targetUrl);
+    } catch (error) {
+      Alert.alert('열기 실패', '관리자 데이터 링크를 열지 못했습니다.');
+    }
+  };
+
+  const handleAdminTitlePress = () => {
+    setAdminTapCount((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setShowAdminTools((visible) => !visible);
+        return 0;
+      }
+      return next;
     });
+  };
+
+  const handleSearch = () => {
+    const navParams = buildNavigationParams();
+
+    const navigateToFlow = async (flow) => {
+      await saveSelectionLog(buildSelectionPayload(flow, hasChildOrSenior));
+      navigation.navigate(flow === 'A' ? 'RestaurantMap' : 'RestaurantList', navParams);
+    };
+
+    if (hasChildOrSenior) {
+      navigation.navigate('SpecialFlowConfirm', {
+        navParams,
+        selectionPayloadBase: buildSelectionPayload('', true),
+      });
+      return;
+    }
+
+    navigateToFlow('A');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* 헤더 */}
         <View style={styles.header}>
-          <Text style={styles.title}>🍽️ 맛집 탐방</Text>
+          <TouchableOpacity
+            onLongPress={() => setShowAdminTools((prev) => !prev)}
+            onPress={handleAdminTitlePress}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.title}>🍽️ 맛집 탐방</Text>
+          </TouchableOpacity>
           <Text style={styles.subtitle}>
             순천의 맛있는 곳을 찾아드릴게요{"\n"}
             조건에 맞는 식당을 추천해드려요
           </Text>
+
+          {showAdminTools && (
+            <View style={styles.adminBox}>
+              <Text style={styles.adminTitle}>관리자 데이터 바로가기</Text>
+              <View style={styles.adminBtnRow}>
+                <TouchableOpacity
+                  style={styles.adminBtn}
+                  onPress={() => openAdminEndpoint('/api/user-selections/stats/')}
+                >
+                  <Text style={styles.adminBtnText}>집계 JSON</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.adminBtn}
+                  onPress={() => openAdminEndpoint('/api/user-selections/export/csv/')}
+                >
+                  <Text style={styles.adminBtnText}>CSV 다운로드</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* 연령대 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👤 연령대별 인원 + 성별</Text>
-          <Text style={styles.sectionHint}>각 연령대에서 남/여 인원을 입력해 주세요</Text>
-          <View style={styles.ageCountBox}>
-            {AGE_GROUPS.map((group) => (
-              <AgeGenderCountRow
-                key={group}
-                label={group}
-                maleCount={ageGenderCounts[group]?.남성 || 0}
-                femaleCount={ageGenderCounts[group]?.여성 || 0}
-                onMaleDecrease={() => updateAgeGenderCount(group, '남성', -1)}
-                onMaleIncrease={() => updateAgeGenderCount(group, '남성', 1)}
-                onFemaleDecrease={() => updateAgeGenderCount(group, '여성', -1)}
-                onFemaleIncrease={() => updateAgeGenderCount(group, '여성', 1)}
+          <Text style={styles.sectionTitle}>👤 동행 인원 정보</Text>
+          <Text style={styles.sectionHint}>기본 2명 · 아래 버튼으로 1명씩 추가</Text>
+
+          <View style={styles.peopleBox}>
+            {companions.map((person, index) => (
+              <CompanionPersonCard
+                key={person.id}
+                index={index}
+                person={person}
+                onChangeAgeGroup={(value) => updateCompanion(person.id, 'ageGroup', value)}
+                onChangeGender={(value) => updateCompanion(person.id, 'gender', value)}
               />
             ))}
-            <Text style={styles.ageCountTotal}>총 {totalAgeCount}명 (남 {totalMaleCount} / 여 {totalFemaleCount})</Text>
+
+            <View style={styles.peopleFooter}>
+              <Text style={styles.peopleTotal}>총 {totalAgeCount}명 (남 {totalMaleCount} / 여 {totalFemaleCount})</Text>
+              <View style={styles.peopleActionRow}>
+                <TouchableOpacity style={styles.addPersonBtn} onPress={addCompanion}>
+                  <Text style={styles.addPersonBtnText}>+ 1명 추가</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.resetBtn} onPress={resetCompanions}>
+                  <Text style={styles.resetBtnText}>기본 2명</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* 동행 유형 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>👥 동행 유형</Text>
-          <ChipGroup
-            options={COMPANION_TYPES}
-            selected={companionType}
-            onSelect={setCompanionType}
-          />
+          <ChipGroup options={COMPANION_TYPES} selected={companionType} onSelect={setCompanionType} />
         </View>
 
-        {/* 이동수단 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🚶 이동수단</Text>
           <ChipGroup options={TRANSPORTS} selected={transport} onSelect={setTransport} />
         </View>
 
-        {/* 위치 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📍 기준 위치</Text>
           <ChipGroup options={LOCATION_OPTIONS} selected={location} onSelect={setLocation} />
         </View>
 
-        {/* 음식 카테고리 (다중 선택) */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🥢 음식 카테고리</Text>
           <Text style={styles.sectionHint}>중복 선택 가능</Text>
-          <MultiChipGroup
-            options={CATEGORIES}
-            selected={categories}
-            onToggle={toggleCategory}
-          />
+          <MultiChipGroup options={CATEGORIES} selected={categories} onToggle={toggleCategory} />
         </View>
 
-        {/* 맛집 찾기 버튼 */}
         <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} activeOpacity={0.85}>
           <Text style={styles.searchBtnText}>🔍 맛집 찾기</Text>
         </TouchableOpacity>
@@ -286,7 +382,6 @@ export default function UserInputScreen({ navigation }) {
   );
 }
 
-// ─── 스타일 ────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -314,6 +409,40 @@ const styles = StyleSheet.create({
     color: TEXT_GRAY,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  adminBox: {
+    marginTop: 10,
+    width: '100%',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  adminTitle: {
+    fontSize: 12,
+    color: TEXT_DARK,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  adminBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  adminBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: PRIMARY,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  adminBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: PRIMARY,
   },
   section: {
     marginBottom: 22,
@@ -356,97 +485,77 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  counter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 16,
-  },
-  counterBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  counterBtnText: {
-    fontSize: 20,
-    color: PRIMARY,
-    fontWeight: '700',
-  },
-  counterValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: TEXT_DARK,
-    minWidth: 40,
-    textAlign: 'center',
-  },
-  ageCountBox: {
+  peopleBox: {
     marginTop: 8,
     borderWidth: 1,
     borderColor: BORDER,
     borderRadius: 12,
     backgroundColor: '#fff',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  personCard: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+  },
+  personTitle: {
+    fontSize: 13,
+    color: TEXT_DARK,
+    fontWeight: '700',
+  },
+  personLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    color: TEXT_GRAY,
+    fontWeight: '600',
+  },
+  peopleFooter: {
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
   },
-  ageCountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  peopleTotal: {
+    flex: 1,
+    fontSize: 12,
+    color: TEXT_GRAY,
+    fontWeight: '600',
   },
-  ageGenderWrap: {
+  peopleActionRow: {
+    flexDirection: 'row',
     gap: 6,
   },
-  ageCountLabel: {
-    fontSize: 13,
-    color: TEXT_DARK,
-    fontWeight: '600',
-    marginTop: 6,
-  },
-  ageCountControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  genderMiniLabel: {
-    width: 14,
-    fontSize: 12,
-    color: TEXT_GRAY,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  ageCountBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  addPersonBtn: {
     borderWidth: 1,
     borderColor: PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  ageCountBtnText: {
+  addPersonBtnText: {
+    fontSize: 11,
     color: PRIMARY,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  ageCountValue: {
-    minWidth: 42,
-    textAlign: 'center',
-    fontSize: 13,
-    color: TEXT_DARK,
     fontWeight: '700',
   },
-  ageCountTotal: {
-    marginTop: 2,
-    fontSize: 12,
-    color: TEXT_GRAY,
-    textAlign: 'right',
-    fontWeight: '600',
+  resetBtn: {
+    borderWidth: 1,
+    borderColor: '#FFD7C9',
+    backgroundColor: '#FFF0EB',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  resetBtnText: {
+    fontSize: 11,
+    color: PRIMARY,
+    fontWeight: '700',
   },
   searchBtn: {
     marginTop: 12,
