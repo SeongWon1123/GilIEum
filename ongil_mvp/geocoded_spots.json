@@ -1,0 +1,108 @@
+[
+  {
+    "id": "suncheonman-wetland",
+    "name": "순천만습지",
+    "category": "nature",
+    "lat": 34.8856119885429,
+    "lng": 127.509555018979,
+    "base_stay_min": 100,
+    "open_time": "08:00",
+    "close_time": "19:00",
+    "tags": [
+      "family",
+      "nature",
+      "photo",
+      "walk"
+    ],
+    "confidence": 0.987,
+    "source": "kakao-local"
+  },
+  {
+    "id": "suncheonman-bay-garden",
+    "name": "순천만국가정원",
+    "category": "garden",
+    "lat": 34.9292183256846,
+    "lng": 127.498901621838,
+    "base_stay_min": 120,
+    "open_time": "09:00",
+    "close_time": "20:00",
+    "tags": [
+      "family",
+      "couple",
+      "nature",
+      "photo",
+      "walk"
+    ],
+    "confidence": 0.979,
+    "source": "kakao-local"
+  },
+  {
+    "id": "naganeupseong",
+    "name": "낙안읍성",
+    "category": "history",
+    "lat": 34.90631043247128,
+    "lng": 127.34177719691982,
+    "base_stay_min": 90,
+    "open_time": "09:00",
+    "close_time": "18:00",
+    "tags": [
+      "family",
+      "history",
+      "education"
+    ],
+    "confidence": 0.71,
+    "source": "kakao-local"
+  },
+  {
+    "id": "suncheon-drama-set",
+    "name": "순천드라마촬영장",
+    "category": "culture",
+    "lat": 34.9584569682125,
+    "lng": 127.538244213124,
+    "base_stay_min": 80,
+    "open_time": "09:00",
+    "close_time": "18:00",
+    "tags": [
+      "friends",
+      "photo",
+      "culture"
+    ],
+    "confidence": 0.928,
+    "source": "kakao-local"
+  },
+  {
+    "id": "songgwangsa",
+    "name": "송광사",
+    "category": "temple",
+    "lat": 35.00218023003931,
+    "lng": 127.27613035804981,
+    "base_stay_min": 70,
+    "open_time": "08:30",
+    "close_time": "17:30",
+    "tags": [
+      "healing",
+      "history",
+      "quiet"
+    ],
+    "confidence": 0.952,
+    "source": "kakao-local"
+  },
+  {
+    "id": "jorye-lake-park",
+    "name": "조례호수공원",
+    "category": "park",
+    "lat": 34.9676781259712,
+    "lng": 127.523793769565,
+    "base_stay_min": 50,
+    "open_time": "00:00",
+    "close_time": "23:59",
+    "tags": [
+      "walk",
+      "friends",
+      "family",
+      "free"
+    ],
+    "confidence": 0.867,
+    "source": "kakao-local"
+  }
+]
