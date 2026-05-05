@@ -1,0 +1,38 @@
+# --- Dependencies ---
+**/node_modules/
+**/.venv/
+**/venv/
+**/env/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Expo / React Native ---
+**/.expo/
+**/web-build/
+**/dist/
+android/
+ios/
+
+# --- Environment / Sensitive ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.log
+
+# --- Databases ---
+*.sqlite3
+db.sqlite3
+
+# --- IDE / System ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Archive (Old versions) ---
+_archive/
+# onsik-mvp (hyphenated) is here

@@ -1,0 +1,72 @@
+services:
+  # FastAPI 백엔드 서비스
+  backend:
+    build: ./backend
+    container_name: onsik-backend
+    runtime: nvidia
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - HF_HUB_TRUST_REMOTE_CODE=1
+      - NVIDIA_VISIBLE_DEVICES=all
+    restart: on-failure
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - redis
+
+  # Celery 워커
+  celery_worker:
+    build: ./backend
+    container_name: onsik-celery
+    command: celery -A tasks.celery_app worker --loglevel=info
+    restart: on-failure
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+
+  # Redis 브로커
+  redis:
+    image: redis:alpine
+    container_name: onsik-redis
+    ports:
+      - "6380:6379"
+
+  # Expo 웹 프론트엔드 서비스
+  frontend:
+    build: ./frontend
+    container_name: onsik-frontend
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      # 브라우저에서 백엔드에 접근하는 URL (호스트 머신의 포트 매핑 기준)
+      - EXPO_PUBLIC_API_BASE_URL=http://localhost:8002
+      # 카카오맵 JavaScript 키 (Kakao Developers > JavaScript 키)
+      - EXPO_PUBLIC_KAKAO_JS_KEY=${EXPO_PUBLIC_KAKAO_JS_KEY}
+      # CI=1 은 Expo의 interactive 모드를 비활성화 (--non-interactive 대체)
+      - CI=1
+    depends_on:
+      - backend
+
+
